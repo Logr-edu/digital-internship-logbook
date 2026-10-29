@@ -429,7 +429,7 @@ function ProgrammeSessionCard({
               <strong className="text-[#141414]">Daily Logging Requirement:</strong> Each working day, write your technical tasks, tools used, and personal reflections (minimum 30 characters). Logs should be written during or immediately after your work session.
             </li>
             <li>
-              <strong className="text-[#141414]">Weekly Submissions:</strong> Every Saturday by 11:59 PM, submit your full week for coordinator assessment. All 5 working days must be filled before submission unlocks.
+              <strong className="text-[#141414]">Weekly Submissions:</strong> Every Saturday by 11:59 PM, submit your full week for coordinator assessment. All scheduled working days within your cohort dates must be filled before submission unlocks.
             </li>
             {cohort.programme === "SWEP" ? (
               <li>

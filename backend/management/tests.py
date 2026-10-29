@@ -488,3 +488,50 @@ class AutomaticCoordinatorEnrollmentTests(TestCase):
         student.refresh_from_db()
         self.assertEqual(student.cohort, cohort)
         self.assertEqual(student.coordinator, coordinator)
+
+
+class PartialWeekSubmissionTests(TestCase):
+    def test_midweek_start_requires_only_training_dates_and_still_rejects_missing_entries(self):
+        from datetime import timezone as datetime_timezone
+        from .models import LogbookEntry
+        fixed_now = datetime(2026, 10, 30, 12, tzinfo=datetime_timezone.utc)
+        department = Department.objects.create(name="Partial Week Department")
+        user = LogrAccount.objects.create_user("partial-week@example.com", "pass")
+        cohort = Cohort.objects.create(programme="SIWES", level=300, session="2026/2027",
+            start_date=date(2026, 10, 28), end_date=date(2026, 11, 20))
+        student = StudentProfile.objects.create(user=user, matric_no="PARTIAL-1", department=department,
+            programme="SIWES", level=300, cohort=cohort, email_verified=True)
+        client = APIClient()
+        client.force_authenticate(user)
+        with patch("backend.management.views.timezone.now", return_value=fixed_now):
+            initial = client.get("/api/v1/student/logbook/weeks/1/")
+            self.assertEqual(initial.status_code, 200)
+            self.assertEqual(initial.data["totalWorkingDayCount"], 3)
+            self.assertEqual([day["date"] for day in initial.data["days"]],
+                ["2026-10-28", "2026-10-29", "2026-10-30"])
+            week = WeeklySubmission.objects.get(pk=initial.data["id"])
+            for day in (date(2026, 10, 28), date(2026, 10, 29)):
+                LogbookEntry.objects.create(student=student, week=week, entry_date=day,
+                    activities="Completed practical training tasks and documented the results.")
+            incomplete = client.get("/api/v1/student/logbook/weeks/1/")
+            self.assertFalse(incomplete.data["canSubmit"])
+            rejected = client.post("/api/v1/student/logbook/weeks/1/", {}, format="json")
+            self.assertEqual(rejected.status_code, 400)
+            self.assertEqual(rejected.data["details"]["missing_days"], ["2026-10-30"])
+            LogbookEntry.objects.create(student=student, week=week, entry_date=date(2026, 10, 30),
+                activities="Completed practical training tasks and documented the results.")
+            complete = client.get("/api/v1/student/logbook/weeks/1/")
+            self.assertTrue(complete.data["canSubmit"])
+            self.assertEqual(complete.data["filledDayCount"], 3)
+            submitted = client.post("/api/v1/student/logbook/weeks/1/", {}, format="json")
+            self.assertEqual(submitted.status_code, 200)
+            self.assertEqual(submitted.data["status"], "submitted")
+
+    def test_end_date_and_holidays_reduce_required_days(self):
+        from .models import CohortHoliday
+        from .views import cohort_working_dates
+        cohort = Cohort.objects.create(programme="SIWES", level=300, session="2026/2027",
+            start_date=date(2026, 10, 28), end_date=date(2026, 11, 3))
+        CohortHoliday.objects.create(cohort=cohort, date=date(2026, 10, 29), label="Training holiday")
+        self.assertEqual(cohort_working_dates(cohort, 1), [date(2026, 10, 28), date(2026, 10, 30)])
+        self.assertEqual(cohort_working_dates(cohort, 2), [date(2026, 11, 2), date(2026, 11, 3)])

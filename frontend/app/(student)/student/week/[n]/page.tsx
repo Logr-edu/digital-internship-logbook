@@ -56,6 +56,10 @@ export default function StudentWeekPage({ params }: { params: Promise<{ n: strin
   const [weekStatus, setWeekStatus] = useState<WeekStatus>("in_progress");
   const [days, setDays] = useState<StudentDayData[]>([]);
   const [dates, setDates] = useState("");
+  const [filledCount, setFilledCount] = useState(0);
+  const [requiredDays, setRequiredDays] = useState(0);
+  const [canSubmit, setCanSubmit] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   // Extension Appeal Modal State
   const [appealModalOpen, setAppealModalOpen] = useState(false);
@@ -72,6 +76,9 @@ export default function StudentWeekPage({ params }: { params: Promise<{ n: strin
       if (res.ok && res.data) {
         setWeekStatus(res.data.status);
         setDays(res.data.days);
+        setFilledCount(res.data.filledDays);
+        setRequiredDays(res.data.totalDays);
+        setCanSubmit(res.data.canSubmit === true);
         if (res.data.startDate && res.data.endDate) {
           setDates(`${res.data.startDate} – ${res.data.endDate}`);
         }
@@ -81,17 +88,20 @@ export default function StudentWeekPage({ params }: { params: Promise<{ n: strin
     loadWeek();
   }, [weekNum]);
 
-  const filledCount = days.filter((d) => ["ready", "reviewed", "submitted"].includes(d.status)).length;
-  const isSubmissionReady = filledCount >= 5 && weekStatus !== "submitted" && weekStatus !== "reviewed";
+  const isSubmissionReady = canSubmit && requiredDays > 0 && weekStatus !== "submitted" && weekStatus !== "reviewed";
 
   async function handleSubmitWeek() {
     if (!isSubmissionReady) return;
+    setSubmitError(null);
     setSubmitting(true);
     const res = await studentApi.submitWeek(weekNum);
     setSubmitting(false);
     if (res.ok) {
       setSubmitSuccess(true);
       setWeekStatus("submitted");
+      setCanSubmit(false);
+    } else {
+      setSubmitError(res.message);
     }
   }
 
@@ -117,6 +127,7 @@ export default function StudentWeekPage({ params }: { params: Promise<{ n: strin
   return (
     <div className="min-h-screen bg-[#F5F4EF] font-sans selection:bg-[#F04D23] selection:text-white text-[#141414] py-8 px-4 sm:px-6">
       <div className="max-w-[880px] mx-auto space-y-5">
+        {submitError && <p role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3 text-[12px] text-red-700">{submitError}</p>}
         
         {/* Navigation Breadcrumb */}
         <div className="flex items-center justify-between">
@@ -152,12 +163,12 @@ export default function StudentWeekPage({ params }: { params: Promise<{ n: strin
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-3">
               <span className="text-[11.5px] text-[#5A5954]">
-                <strong className="text-[#141414]">{filledCount} of 5</strong> days recorded
+                <strong className="text-[#141414]">{filledCount} of {requiredDays}</strong> days recorded
               </span>
               <div className="w-16 h-1.5 rounded-full bg-[#F0EFE9] overflow-hidden">
                 <div
                   className="h-full bg-[#141414] rounded-full transition-all"
-                  style={{ width: `${(filledCount / 5) * 100}%` }}
+                  style={{ width: `${requiredDays > 0 ? Math.min(100, (filledCount / requiredDays) * 100) : 0}%` }}
                 />
               </div>
             </div>
@@ -290,7 +301,7 @@ export default function StudentWeekPage({ params }: { params: Promise<{ n: strin
                 ? "This week has been submitted for assessment."
                 : isSubmissionReady
                 ? "All 5 working days are completed. You can now submit this week."
-                : `Fill all 5 working days to unlock week submission (${filledCount}/5 completed).`}
+                : `Fill all ${requiredDays} scheduled working days to unlock week submission (${filledCount}/${requiredDays} completed).`}
             </p>
           </div>
 

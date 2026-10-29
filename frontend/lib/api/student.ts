@@ -295,7 +295,7 @@ function transformBackendWeek(week: BackendWeekPayload): StudentWeekSummary {
     endDate: week.endDate,
     status: normalizeWeekStatus(week.status),
     filledDays: week.filledDayCount || 0,
-    totalDays: week.totalWorkingDayCount || 5,
+    totalDays: week.totalWorkingDayCount ?? days.length,
     days,
     canSubmit: week.canSubmit,
     deadline: week.deadline,

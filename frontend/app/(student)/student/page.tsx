@@ -521,10 +521,14 @@ export default function StudentDashboardPage() {
   const matricNo = dashboard?.student.matricNo || "—";
   const firstName = studentName.split(" ")[0];
 
-  // Today's entry target
-  const todayEntryHref = currentDays.length > 0
-    ? currentDays.find((d) => !["future", "holiday"].includes(d.status))?.href || `/student/day/${currentDays[0].dateStr}`
-    : "/student";
+  // Use the training timezone, independent of the device timezone or weekly entries.
+  const todayParts = new Intl.DateTimeFormat("en", {
+    timeZone: "Africa/Lagos", year: "numeric", month: "2-digit", day: "2-digit",
+  }).formatToParts(new Date());
+  const todayDate = ["year", "month", "day"]
+    .map((part) => todayParts.find((value) => value.type === part)?.value)
+    .join("-");
+  const todayEntryHref = `/student/day/${todayDate}`;
 
   return (
     <div className="min-h-screen bg-[#F5F4EF] flex font-sans selection:bg-[#F04D23] selection:text-white text-[#141414]">

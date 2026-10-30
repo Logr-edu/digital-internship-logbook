@@ -667,7 +667,8 @@ export const studentApi = {
         recipientName: b.supervisor.name,
         companyName: b.supervisor.organisation || "Placement Organisation",
         sentAt: b.sentAt,
-        status: (b.status.toLowerCase() as "pending" | "reviewed" | "expired") || "pending",
+        status: b.status.toLowerCase() === "reviewed" ? "reviewed"
+          : b.status.toLowerCase() === "expired" ? "expired" : "pending",
         feedback: b.reviewText || undefined,
         signedBy: b.signature || undefined,
       }));

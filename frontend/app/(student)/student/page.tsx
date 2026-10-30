@@ -491,7 +491,7 @@ export default function StudentDashboardPage() {
     },
     ...(programme === "SWEP"
       ? [{ label: "Attendance", href: "/student/attendance", icon: <Calendar className="size-4" /> }]
-      : [{ label: "Reviews", href: "/student/reviews", icon: <Star className="size-4" /> }]),
+      : [{ label: "Supervisor Reviews", href: "/student/reviews", icon: <Star className="size-4" /> }]),
     { label: "Profile", href: "/student/profile", icon: <User className="size-4" /> },
   ];
 
@@ -622,6 +622,19 @@ export default function StudentDashboardPage() {
                   >
                     <span>Enter code</span>
                     <ChevronRight className="size-3.5" />
+                  </Link>
+                </div>
+              )}
+
+              {isMatched && programme === "SIWES" && (
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3.5 p-4 rounded-2xl bg-white border border-[#E8E7E1] shadow-xs">
+                  <div>
+                    <p className="text-[13px] font-semibold text-[#141414]">Industry supervisor review</p>
+                    <p className="text-[11px] text-[#7A7973]">Send submitted weeks to your workplace supervisor for review and signature.</p>
+                  </div>
+                  <Link href="/student/reviews"
+                    className="shrink-0 inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-[#141414] text-white text-[11px] font-semibold hover:bg-[#282828] transition-colors">
+                    Send to supervisor <ChevronRight className="size-3.5" />
                   </Link>
                 </div>
               )}

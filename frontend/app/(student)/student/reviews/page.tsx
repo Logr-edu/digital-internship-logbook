@@ -174,6 +174,24 @@ export default function StudentReviewsPage() {
   const [sheetOpen, setSheetOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [batches, setBatches] = useState<SupervisorReviewBatchItem[]>([]);
+  const [resendingId, setResendingId] = useState<string | null>(null);
+  const [resendMessage, setResendMessage] = useState<string | null>(null);
+  const [resendError, setResendError] = useState<string | null>(null);
+
+  async function handleResend(batch: SupervisorReviewBatchItem) {
+    if (resendingId) return;
+    setResendingId(batch.id);
+    setResendMessage(null);
+    setResendError(null);
+    const response = await studentApi.resendSupervisorReview(batch.id);
+    setResendingId(null);
+    if (response.ok) {
+      setResendMessage(`A fresh review link was sent to ${batch.recipientEmail}. Use the newest email; the previous link is no longer valid.`);
+      await loadBatches();
+    } else {
+      setResendError(response.message);
+    }
+  }
 
   async function loadBatches() {
     setLoading(true);
@@ -198,6 +216,8 @@ export default function StudentReviewsPage() {
       )}
 
       <div className="max-w-[780px] mx-auto space-y-5">
+        {resendMessage && <p role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-[12px] text-emerald-800">{resendMessage}</p>}
+        {resendError && <p role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3 text-[12px] text-red-700">{resendError}</p>}
         
         {/* Navigation Breadcrumb */}
         <div className="flex items-center justify-between">
@@ -291,6 +311,15 @@ export default function StudentReviewsPage() {
                         </span>
                       )}
                     </div>
+
+                    {(batch.status === "pending" || batch.status === "expired") && (
+                      <button type="button" disabled={resendingId !== null}
+                        onClick={() => handleResend(batch)}
+                        className="inline-flex items-center gap-1.5 rounded-full bg-[#141414] px-3.5 py-1.5 text-[11px] font-semibold text-white hover:bg-[#282828] disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+                        <Send className="size-3.5" />
+                        {resendingId === batch.id ? "Sending…" : "Resend review link"}
+                      </button>
+                    )}
 
                     {batch.feedback && (
                       <div className="p-3 rounded-xl bg-[#FAF9F5] border border-[#E8E7E1] text-[12px] text-[#5A5954] leading-relaxed italic">

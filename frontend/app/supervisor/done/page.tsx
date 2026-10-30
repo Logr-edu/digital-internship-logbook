@@ -1,8 +1,7 @@
 "use client";
 
 import { use } from "react";
-import Link from "next/link";
-import { CheckCircle2, ArrowRight } from "lucide-react";
+import { CheckCircle2 } from "lucide-react";
 
 export default function SupervisorDonePage({
   searchParams,
@@ -44,19 +43,10 @@ export default function SupervisorDonePage({
 
           <div className="p-4 rounded-xl bg-[#FAF9F5] border border-[#E8E7E1] text-[11.5px] text-[#7A7973]">
             <p>
-              Your rating and comments are now attached to the student&apos;s internship logbook record. You may close this window.
+              Your review and signature are now attached to the student&apos;s internship logbook record. You may close this window.
             </p>
           </div>
 
-          <div className="pt-2">
-            <Link
-              href="/"
-              className="inline-flex items-center gap-1.5 text-[11.5px] font-semibold text-[#141414] hover:underline"
-            >
-              <span>Return to home</span>
-              <ArrowRight className="size-3" />
-            </Link>
-          </div>
         </div>
 
       </div>

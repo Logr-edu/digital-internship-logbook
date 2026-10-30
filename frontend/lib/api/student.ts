@@ -682,6 +682,10 @@ export const studentApi = {
     };
   },
 
+  resendSupervisorReview(reviewId: string): Promise<ApiResult<{ message: string }>> {
+    return api.post(`/student/supervisor-reviews/${encodeURIComponent(reviewId)}/resend/`, {});
+  },
+
   /** Send review batch invitation to workplace supervisor */
   async sendSupervisorBatch(payload: SendSupervisorBatchPayload): Promise<ApiResult<{ message: string }>> {
     const phone = payload.phone?.trim() || "+2348000000000" || "+2349000000000";

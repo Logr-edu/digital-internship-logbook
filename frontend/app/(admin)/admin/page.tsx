@@ -36,7 +36,7 @@ export default function AdminOverviewPage() {
           activeCoordinators: 0,
           pendingInvitations: 0,
           weeksSubmittedThisWeek: 0,
-          cohortCompletionRate: 100,
+          cohortCompletionRate: 0,
           overdueWeeksCount: 0,
         });
       }
@@ -44,8 +44,16 @@ export default function AdminOverviewPage() {
       setLoading(false);
     }
     load();
+    async function refreshStats() {
+      const response = await adminApi.getOverviewStats();
+      if (mounted && response.ok) setStats(response.data);
+    }
+    const refreshTimer = setInterval(refreshStats, 15000);
+    window.addEventListener("focus", refreshStats);
     return () => {
       mounted = false;
+      clearInterval(refreshTimer);
+      window.removeEventListener("focus", refreshStats);
     };
   }, []);
 
@@ -137,7 +145,7 @@ export default function AdminOverviewPage() {
                 <span className="text-[11px] text-[#7A7973]">submitted</span>
               </div>
               <p className="text-[10.5px] text-emerald-700 font-medium mt-0.5">
-                {stats.cohortCompletionRate}% on-time submission rate
+                {stats.cohortCompletionRate}% overall submission rate
               </p>
             </div>
 

@@ -21,11 +21,13 @@ export function CoordinatorShell({
   title,
   subtitle,
   actions,
+  activeHref,
 }: {
   children: React.ReactNode;
   title?: string;
   subtitle?: string;
   actions?: React.ReactNode;
+  activeHref?: string;
 }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -126,9 +128,10 @@ export function CoordinatorShell({
         {/* Navigation Links */}
         <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
           {navItems.map((item) => {
-            const active =
+            const active = activeHref ? item.href === activeHref : (
               pathname === item.href ||
-              (item.href !== "/coordinator" && pathname.startsWith(item.href));
+              (item.href !== "/coordinator" && pathname.startsWith(item.href))
+            );
 
             return (
               <Link

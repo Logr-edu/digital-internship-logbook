@@ -218,6 +218,8 @@ export default function StudentWeekPage({ params }: { params: Promise<{ n: strin
             <div className="divide-y divide-[#F0EFE9]">
               {days.map((day) => {
                 const isLocked = day.status === "future" || day.status === "holiday";
+                const isReadOnly = weekStatus === "submitted" || weekStatus === "reviewed"
+                  || day.status === "submitted" || day.status === "reviewed" || day.editable === false;
                 return (
                   <div
                     key={day.date}
@@ -279,7 +281,7 @@ export default function StudentWeekPage({ params }: { params: Promise<{ n: strin
                             href={`/student/day/${day.date}`}
                             className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border border-[#D8D7CE] hover:border-[#141414] text-[11.5px] font-semibold text-[#141414] hover:bg-white transition-all shadow-2xs"
                           >
-                            <span>{day.activities ? "Edit log" : "Write log"}</span>
+                            <span>{isReadOnly ? "View log" : day.activities ? "Edit log" : "Write log"}</span>
                             <ChevronRight className="size-3.5" />
                           </Link>
                         )}
@@ -300,7 +302,7 @@ export default function StudentWeekPage({ params }: { params: Promise<{ n: strin
               {weekStatus === "submitted" || weekStatus === "reviewed"
                 ? "This week has been submitted for assessment."
                 : isSubmissionReady
-                ? "All 5 working days are completed. You can now submit this week."
+                ? "All working days are completed. You can now submit this week."
                 : `Fill all ${requiredDays} scheduled working days to unlock week submission (${filledCount}/${requiredDays} completed).`}
             </p>
           </div>

@@ -371,3 +371,12 @@ python manage.py migrate
 `POST /admin/cohorts/` now assigns an existing active coordinator in each selected department before enrolling students. SWEP matches department and programme; SIWES additionally matches 300L or 400L. Inactive coordinators are excluded. Exactly one matching active coordinator is assigned automatically. If none match, the department remains unassigned and the admin can invite one. If several match, it remains unassigned until an admin selects a coordinator; students still enrol and are linked to that coordinator when the selection is saved. Existing assignments are preserved. Creating a new cohort does not move students already enrolled in another cohort.
 
 The cohorts page shows Invite when no matching coordinator exists, Choose Coordinator for multiple matches, and Change Coordinator for an assigned department. Manual assignment remains available for older unassigned cohorts that already have a matching coordinator. No database migration is required for this change.
+
+
+`GET /coordinator/students/?filter=needs_review` returns only assigned students with submitted weeks awaiting coordinator review. Student list rows include `pendingReviewCount` and a `status` badge value. The Weekly Reviews navigation reads this URL filter; selecting All removes it.
+
+
+Coordinator student list and detail responses include `runningScoreAvg`: the average entry rating across completed `REVIEWED` weeks, rounded to two decimal places, on the 1-5 scale. It is `null` when no completed grades exist. Display a value such as `4.2 / 5`, or `Not yet graded`; partially reviewed submitted weeks are excluded.
+
+
+Admin overview includes `weeks_submitted_this_week`, counting distinct weekly submission records whose `submitted_at` falls within the current Monday-Sunday week in the application timezone. Reviewed and returned weeks remain counted; pending-review count is a separate metric. The admin dashboard refreshes statistics every 15 seconds and on window focus. The existing rate is labelled overall submission rate because it does not measure timeliness.

@@ -1389,6 +1389,13 @@ def get_coordinator_students(coordinator):
     ).distinct()
 
 
+def reviewed_score_average(student):
+    average = student.weeks.filter(status=WeeklySubmission.Status.REVIEWED).aggregate(
+        average=Avg("entries__coordinator_review__rating")
+    )["average"]
+    return round(average, 2) if average is not None else None
+
+
 class CoordinatorStudentListView(APIView):
     permission_classes = [IsAuthenticated, IsCoordinator]
     authentication_classes = [JWTAuthentication]
@@ -1399,10 +1406,15 @@ class CoordinatorStudentListView(APIView):
         search = request.query_params.get("q", "").strip()
         if search:
             students = students.filter(Q(matric_no__icontains=search) | Q(user__email__icontains=search))
+        requested_filter = request.query_params.get("filter")
+        if requested_filter == "needs_review":
+            students = students.filter(weeks__status=WeeklySubmission.Status.SUBMITTED).distinct()
         results = []
         for student in students.order_by("matric_no")[:100]:
             week_count = student.weeks.count()
             submitted = student.weeks.filter(status__in=["SUBMITTED", "REVIEWED", "RETURNED"]).count()
+            pending_reviews = student.weeks.filter(status=WeeklySubmission.Status.SUBMITTED).count()
+            pending_extensions = student.weeks.filter(extension_requests__status=ExtensionRequest.Status.PENDING).exists()
             results.append({
                 "id": student.pk,
                 "matricNo": student.matric_no,
@@ -1415,6 +1427,9 @@ class CoordinatorStudentListView(APIView):
                     else None
                 ),
                 "weeksSubmitted": submitted,
+                "pendingReviewCount": pending_reviews,
+                "runningScoreAvg": reviewed_score_average(student),
+                "status": "needs_review" if pending_reviews else "extension_pending" if pending_extensions else "up_to_date",
                 "totalWeeks": student.cohort.total_weeks if student.cohort else 0,
                 "cohortId": student.cohort_id,
             })
@@ -1547,6 +1562,7 @@ class CoordinatorStudentDetailView(APIView):
             })
         return Response({
             "id": student.pk,
+            "runningScoreAvg": reviewed_score_average(student),
             "name": f"{student.user.first_name} {student.user.last_name}".strip(),
             "matricNo": student.matric_no,
             "programme": student.programme,
@@ -2154,6 +2170,12 @@ class AdminOverviewView(APIView):
     def get(self, request):
         from backend.auth.models import CoordinatorInvitation, Faculty
         today = timezone.localdate()
+        local_now = timezone.localtime()
+        week_start = local_now.replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=local_now.weekday())
+        submissions_this_week = WeeklySubmission.objects.filter(
+            submitted_at__gte=week_start,
+            submitted_at__lt=week_start + timedelta(days=7),
+        ).count()
 
         # Submission stats
         total_weeks = WeeklySubmission.objects.count()
@@ -2213,6 +2235,7 @@ class AdminOverviewView(APIView):
             "weeks_waiting_for_review": WeeklySubmission.objects.filter(
                 status=WeeklySubmission.Status.SUBMITTED,
             ).count(),
+            "weeks_submitted_this_week": submissions_this_week,
             "supervisor_reviews_waiting": SupervisorReview.objects.filter(
                 status=SupervisorReview.Status.SENT,
             ).count(),

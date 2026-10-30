@@ -13,7 +13,7 @@ export interface CoordinatorStudentSummary {
   department?: string;
   status?: string;
   pendingReviewCount?: number;
-  runningScoreAvg?: number;
+  runningScoreAvg?: number | null;
   weeksSubmitted: number;
   totalWeeks: number;
   cohortId?: number;

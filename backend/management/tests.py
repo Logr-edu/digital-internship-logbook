@@ -535,3 +535,93 @@ class PartialWeekSubmissionTests(TestCase):
         CohortHoliday.objects.create(cohort=cohort, date=date(2026, 10, 29), label="Training holiday")
         self.assertEqual(cohort_working_dates(cohort, 1), [date(2026, 10, 28), date(2026, 10, 30)])
         self.assertEqual(cohort_working_dates(cohort, 2), [date(2026, 11, 2), date(2026, 11, 3)])
+
+
+class WeeklyReviewFilterTests(TestCase):
+    setUp = CohortAssignmentTests.setUp
+    make_student = CohortAssignmentTests.make_student
+
+    def test_weekly_reviews_only_returns_own_students_with_submitted_weeks(self):
+        waiting = self.make_student("waiting-review@example.com", self.department, cohort=self.cohort)
+        draft = self.make_student("draft-review@example.com", self.department, cohort=self.cohort)
+        unrelated = self.make_student("unrelated-review@example.com", self.other_department)
+        for student in (waiting, draft):
+            student.coordinator = self.coordinator
+            student.save(update_fields=["coordinator"])
+        for student, state in [(waiting, "SUBMITTED"), (draft, "OPEN"), (unrelated, "SUBMITTED")]:
+            WeeklySubmission.objects.create(student=student, cohort=self.cohort, week_no=1,
+                status=state, deadline_at=timezone.now() + timedelta(days=1))
+        client = APIClient()
+        client.force_authenticate(self.user)
+        response = client.get("/api/v1/coordinator/students/?filter=needs_review")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual([item["id"] for item in response.data["results"]], [waiting.pk])
+        self.assertEqual(response.data["results"][0]["pendingReviewCount"], 1)
+        self.assertEqual(response.data["results"][0]["status"], "needs_review")
+        self.assertEqual(len(client.get("/api/v1/coordinator/students/").data["results"]), 2)
+
+
+class CoordinatorScoreTests(TestCase):
+    setUp = CohortAssignmentTests.setUp
+    make_student = CohortAssignmentTests.make_student
+
+    def test_list_and_detail_show_reviewed_scores_and_no_grade_placeholder(self):
+        from .models import EntryReview, LogbookEntry
+        student = self.make_student("graded-score@example.com", self.department, cohort=self.cohort)
+        ungraded = self.make_student("ungraded-score@example.com", self.department, cohort=self.cohort)
+        for profile in (student, ungraded):
+            profile.coordinator = self.coordinator
+            profile.save(update_fields=["coordinator"])
+        reviewed = WeeklySubmission.objects.create(student=student, cohort=self.cohort, week_no=1,
+            status="REVIEWED", deadline_at=timezone.now() + timedelta(days=7))
+        pending = WeeklySubmission.objects.create(student=student, cohort=self.cohort, week_no=2,
+            status="SUBMITTED", deadline_at=timezone.now() + timedelta(days=14))
+        for offset, (week, rating) in enumerate([(reviewed, 3), (reviewed, 5), (pending, 1)]):
+            entry = LogbookEntry.objects.create(student=student, week=week,
+                entry_date=timezone.localdate() + timedelta(days=offset), activities="Graded activity")
+            EntryReview.objects.create(entry=entry, coordinator=self.coordinator, rating=rating)
+        client = APIClient()
+        client.force_authenticate(self.user)
+        listing = client.get("/api/v1/coordinator/students/")
+        self.assertEqual(listing.status_code, 200)
+        scores = {row["id"]: row["runningScoreAvg"] for row in listing.data["results"]}
+        self.assertEqual(scores[student.pk], 4)
+        self.assertIsNone(scores[ungraded.pk])
+        for profile, expected in [(student, 4), (ungraded, None)]:
+            detail = client.get(f"/api/v1/coordinator/students/{profile.pk}/")
+            self.assertEqual(detail.status_code, 200)
+            self.assertEqual(detail.data["runningScoreAvg"], expected)
+
+
+class AdminSubmissionCounterTests(TestCase):
+    setUp = CohortAssignmentTests.setUp
+    make_student = CohortAssignmentTests.make_student
+
+    def test_weekly_counter_uses_submission_dates_and_survives_review(self):
+        from datetime import timezone as datetime_timezone
+        student = self.make_student("admin-counter@example.com", self.department, cohort=self.cohort)
+        client = APIClient()
+        client.force_authenticate(LogrAccount.objects.create_superuser("counter-admin@example.com", "pass"))
+        timestamps = [
+            ("SUBMITTED", datetime(2026, 10, 25, 23, tzinfo=datetime_timezone.utc)),
+            ("RETURNED", datetime(2026, 10, 30, 8, tzinfo=datetime_timezone.utc)),
+            ("REVIEWED", datetime(2026, 10, 25, 22, 59, 59, tzinfo=datetime_timezone.utc)),
+            ("REVIEWED", datetime(2026, 11, 1, 23, tzinfo=datetime_timezone.utc)),
+            ("OPEN", None),
+        ]
+        weeks = []
+        for number, (state, submitted_at) in enumerate(timestamps, 1):
+            weeks.append(WeeklySubmission.objects.create(student=student, cohort=self.cohort,
+                week_no=number, status=state, submitted_at=submitted_at,
+                deadline_at=timezone.now() + timedelta(days=7)))
+        fixed_now = datetime(2026, 10, 30, 12, tzinfo=datetime_timezone.utc)
+        with timezone.override("Africa/Lagos"), patch("backend.management.views.timezone.now", return_value=fixed_now):
+            response = client.get("/api/v1/admin/overview/")
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.data["weeks_submitted_this_week"], 2)
+            self.assertEqual(response.data["weeks_waiting_for_review"], 1)
+            weeks[0].status = "REVIEWED"
+            weeks[0].save(update_fields=["status"])
+            reviewed = client.get("/api/v1/admin/overview/")
+            self.assertEqual(reviewed.data["weeks_submitted_this_week"], 2)
+            self.assertEqual(reviewed.data["weeks_waiting_for_review"], 0)

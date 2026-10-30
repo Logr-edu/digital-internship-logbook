@@ -107,7 +107,7 @@ export default function CoordinatorStudentDetailPage({
                 <div className="text-right">
                   <p className="text-[9.5px] font-mono text-[#7A7973] uppercase">Average Score</p>
                   <p className="text-[1.4rem] font-extrabold tracking-tight text-[#141414] leading-none">
-                    {data.runningScoreAvg}%
+                    {data.runningScoreAvg == null ? "Not yet graded" : `${data.runningScoreAvg} / 5`}
                   </p>
                   <p className="text-[10px] text-[#7A7973] mt-0.5">from graded weeks</p>
                 </div>

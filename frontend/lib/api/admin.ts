@@ -37,6 +37,7 @@ export interface AdminOverview {
   pending_invitations?: number;
   active_cohorts?: number;
   weeks_submitted_today?: number;
+  weeks_submitted_this_week?: number;
   students?: number;
   coordinators?: number;
   active_accounts?: number;
@@ -230,7 +231,7 @@ export const adminApi = {
       totalStudents: d.students ?? d.total_students ?? 0,
       activeCoordinators: d.coordinators ?? d.total_coordinators ?? 0,
       pendingInvitations: d.supervisor_reviews_waiting ?? d.pending_invitations ?? 0,
-      weeksSubmittedThisWeek: d.weeks_waiting_for_review ?? d.weeks_submitted_today ?? 0,
+      weeksSubmittedThisWeek: d.weeks_submitted_this_week ?? 0,
       cohortCompletionRate: d.cohort_completion_rate ?? d.submission_rate ?? 0,
       overdueWeeksCount: d.overdue_weeks ?? d.overdue_weeks_count ?? 0,
       pendingStudents: d.pending_students ?? 0,

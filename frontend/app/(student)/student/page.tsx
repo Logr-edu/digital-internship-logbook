@@ -740,17 +740,17 @@ export default function StudentDashboardPage() {
                   {/* Submit Action Footer */}
                   <div className="px-5 py-3.5 bg-[#FAF9F5] border-t border-[#F0EFE9] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                     <p className="text-[11px] text-[#7A7973]">
-                      {canSubmit
-                        ? `All working days for Week ${dashboard.currentWeek.weekNumber} are filled and ready for coordinator review.`
-                        : `Complete remaining daily entries to unlock Week ${dashboard.currentWeek.weekNumber} submission.`}
+                      {dashboard.currentWeek.status === "reviewed"
+                        ? `Week ${dashboard.currentWeek.weekNumber} has been reviewed. Open your logbook to see your feedback.`
+                        : dashboard.currentWeek.status === "submitted"
+                          ? `Week ${dashboard.currentWeek.weekNumber} has been submitted and is awaiting review.`
+                          : canSubmit
+                            ? `Week ${dashboard.currentWeek.weekNumber} is complete and ready to submit.`
+                            : `Complete remaining daily entries to unlock Week ${dashboard.currentWeek.weekNumber} submission.`}
                     </p>
                     <Link
                       href={`/student/week/${dashboard.currentWeek.weekNumber}`}
-                      className={`px-4 py-2 rounded-full text-[12px] font-semibold transition-all ${
-                        canSubmit
-                          ? "bg-[#141414] text-white hover:bg-[#282828] shadow-xs cursor-pointer"
-                          : "bg-[#E8E7E1] text-[#7A7973]"
-                      }`}
+                      className="px-4 py-2 rounded-full text-[12px] font-semibold transition-all bg-[#141414] text-white hover:bg-[#282828] shadow-xs cursor-pointer"
                     >
                       Open Week {dashboard.currentWeek.weekNumber} logbook
                     </Link>

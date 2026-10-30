@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   Search, BookOpen, ChevronRight, AlertCircle,
   Clock, CheckCircle2, Star, Award
@@ -10,21 +11,27 @@ import { CoordinatorShell } from "@/components/coordinator/CoordinatorShell";
 import { StudentsListSkeleton } from "@/components/coordinator/CoordinatorSkeletons";
 import { coordinatorApi, type CoordinatorStudentSummary } from "@/lib/api/coordinator";
 
-export default function CoordinatorStudentsPage() {
+function CoordinatorStudentsList() {
+  const router = useRouter();
+  const params = useSearchParams();
   const [loading, setLoading] = useState(true);
   const [students, setStudents] = useState<CoordinatorStudentSummary[]>([]);
   const [query, setQuery] = useState("");
-  const [filter, setFilter] = useState<string>("all");
+  const requestedFilter = params.get("filter") ?? "all";
+  const filter = ["needs_review", "extension_pending", "overdue"].includes(requestedFilter)
+    ? requestedFilter : "all";
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let mounted = true;
     async function load() {
       setLoading(true);
+      setError(null);
       const res = await coordinatorApi.getStudents(query, filter);
-      if (mounted && res.ok) {
-        setStudents(res.data);
-        setLoading(false);
-      }
+      if (!mounted) return;
+      if (res.ok) setStudents(res.data);
+      else { setStudents([]); setError(res.message); }
+      setLoading(false);
     }
     load();
     return () => {
@@ -34,7 +41,8 @@ export default function CoordinatorStudentsPage() {
 
   return (
     <CoordinatorShell
-      title="Students"
+      title={filter === "needs_review" ? "Weekly Reviews" : "Students"}
+      activeHref={filter === "needs_review" ? "/coordinator/students?filter=needs_review" : "/coordinator/students"}
       subtitle="Enrolled students, submission status, and running grades"
     >
       <div className="space-y-6">
@@ -63,7 +71,13 @@ export default function CoordinatorStudentsPage() {
             ].map((tab) => (
               <button
                 key={tab.id}
-                onClick={() => setFilter(tab.id)}
+                onClick={() => {
+                  const next = new URLSearchParams(params.toString());
+                  if (tab.id === "all") next.delete("filter");
+                  else next.set("filter", tab.id);
+                  const suffix = next.toString();
+                  router.replace(`/coordinator/students${suffix ? `?${suffix}` : ""}`, { scroll: false });
+                }}
                 className={`px-3 py-1.5 rounded-full text-[11px] font-semibold transition-colors shrink-0 cursor-pointer ${
                   filter === tab.id
                     ? "bg-[#141414] text-white"
@@ -79,6 +93,8 @@ export default function CoordinatorStudentsPage() {
         {/* Loading State or Students Grid */}
         {loading ? (
           <StudentsListSkeleton />
+        ) : error ? (
+          <p role="alert" className="rounded-xl border border-red-200 bg-red-50 p-4 text-[12px] text-red-700">{error}</p>
         ) : students.length === 0 ? (
           <div className="bg-white rounded-2xl border border-[#E8E7E1] p-12 text-center space-y-2">
             <BookOpen className="size-8 text-[#9A9990] mx-auto" />
@@ -155,7 +171,7 @@ export default function CoordinatorStudentsPage() {
                   <div className="flex items-center justify-between pt-4 mt-3 border-t border-[#F0EFE9] text-[11px]">
                     <div className="flex items-center gap-1 text-[#5A5954]">
                       <Award className="size-3.5 text-amber-600" />
-                      <span>Average: <strong className="text-[#141414]">{student.runningScoreAvg}%</strong></span>
+                      <span>Average: <strong className="text-[#141414]">{student.runningScoreAvg == null ? "Not yet graded" : `${student.runningScoreAvg} / 5`}</strong></span>
                     </div>
 
                     <span className="inline-flex items-center gap-0.5 font-semibold text-[#141414] group-hover:translate-x-0.5 transition-transform">
@@ -170,5 +186,13 @@ export default function CoordinatorStudentsPage() {
 
       </div>
     </CoordinatorShell>
+  );
+}
+
+export default function CoordinatorStudentsPage() {
+  return (
+    <Suspense fallback={<StudentsListSkeleton />}>
+      <CoordinatorStudentsList />
+    </Suspense>
   );
 }

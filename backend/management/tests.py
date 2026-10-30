@@ -625,3 +625,41 @@ class AdminSubmissionCounterTests(TestCase):
             reviewed = client.get("/api/v1/admin/overview/")
             self.assertEqual(reviewed.data["weeks_submitted_this_week"], 2)
             self.assertEqual(reviewed.data["weeks_waiting_for_review"], 0)
+
+
+class SupervisorLinkAccessTests(TestCase):
+    setUp = CohortAssignmentTests.setUp
+    make_student = CohortAssignmentTests.make_student
+
+    def test_cross_origin_preflight_allows_supervisor_token_header(self):
+        response = APIClient().options("/api/v1/supervisor/review/",
+            HTTP_ORIGIN="http://localhost:3000", HTTP_ACCESS_CONTROL_REQUEST_METHOD="GET",
+            HTTP_ACCESS_CONTROL_REQUEST_HEADERS="content-type,x-supervisor-token")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response["Access-Control-Allow-Origin"], "http://localhost:3000")
+        self.assertIn("x-supervisor-token", response["Access-Control-Allow-Headers"].lower())
+
+    def test_valid_link_can_be_opened_repeatedly_and_expired_or_used_links_are_distinct(self):
+        from .models import SupervisorReview, SupervisorReviewToken
+        student = self.make_student("supervisor-link@example.com", self.department, programme="SIWES", cohort=self.cohort)
+        supervisor = SupervisorDetails.objects.create(student=student, name="Industry Supervisor",
+            email="industry@example.com", phone="+2348000000000")
+        review = SupervisorReview.objects.create(student=student, supervisor=supervisor, batch_no=1,
+            name_snapshot=supervisor.name, email_snapshot=supervisor.email, phone_snapshot=supervisor.phone)
+        raw, hashed = SupervisorReviewToken.new_token()
+        token = SupervisorReviewToken.objects.create(review=review, token_hash=hashed)
+        client = APIClient()
+        for _ in range(2):
+            response = client.get("/api/v1/supervisor/review/", HTTP_X_SUPERVISOR_TOKEN=raw)
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.data["student"]["matricNo"], student.matric_no)
+        token.refresh_from_db()
+        self.assertIsNone(token.used_at)
+        invalid = client.get("/api/v1/supervisor/review/", HTTP_X_SUPERVISOR_TOKEN="invalid-token")
+        self.assertEqual(invalid.data["code"], "token_invalid")
+        token.expires_at = timezone.now() - timedelta(seconds=1)
+        token.save(update_fields=["expires_at"])
+        self.assertEqual(client.get("/api/v1/supervisor/review/", HTTP_X_SUPERVISOR_TOKEN=raw).data["code"], "token_expired")
+        token.used_at = timezone.now()
+        token.save(update_fields=["used_at"])
+        self.assertEqual(client.get("/api/v1/supervisor/review/", HTTP_X_SUPERVISOR_TOKEN=raw).data["code"], "already_submitted")

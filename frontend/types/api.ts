@@ -7,6 +7,7 @@ export interface ApiError {
   ok: false;
   status: number;
   message: string;
+  code?: string;
   errors?: Record<string, string[]>;
 }
 

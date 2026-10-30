@@ -50,7 +50,7 @@ export default function SupervisorReviewPage({
           setExpandedWeek(res.data.weeks[0].weekNumber);
         }
       } else {
-        setErrorState(res.message || "invalid_token");
+        setErrorState(res.code ?? (res.status === 0 ? "connection_error" : "load_failed"));
       }
       setLoading(false);
     }
@@ -129,7 +129,7 @@ export default function SupervisorReviewPage({
             <div className="size-7 rounded-full border-2 border-[#141414] border-t-transparent animate-spin mx-auto" />
             <p className="text-[12px] text-[#7A7973]">Loading review details…</p>
           </div>
-        ) : errorState === "link_expired" ? (
+        ) : errorState === "token_expired" || errorState === "link_expired" ? (
           /* Expired Link State */
           <div className="bg-white rounded-2xl border border-[#E8E7E1] p-8 text-center space-y-3 shadow-xs">
             <div className="size-12 rounded-full bg-amber-50 text-amber-700 flex items-center justify-center mx-auto border border-amber-200">
@@ -140,18 +140,22 @@ export default function SupervisorReviewPage({
               This review link is no longer valid. Contact the student to request a new review link.
             </p>
           </div>
-        ) : errorState === "invalid_token" || !batch ? (
+        ) : errorState !== "already_submitted" && !batch ? (
           /* Invalid Link State */
           <div className="bg-white rounded-2xl border border-[#E8E7E1] p-8 text-center space-y-3 shadow-xs">
             <div className="size-12 rounded-full bg-red-50 text-red-600 flex items-center justify-center mx-auto border border-red-200">
               <AlertCircle className="size-6" />
             </div>
-            <h2 className="text-[15px] font-bold text-[#141414]">Invalid Review Link</h2>
+            <h2 className="text-[15px] font-bold text-[#141414]">{errorState === "invalid_token" || errorState === "token_invalid" ? "Invalid Review Link" : "Unable to Load Review"}</h2>
             <p className="text-[12.5px] text-[#5A5954] max-w-md mx-auto leading-relaxed">
-              This link is invalid or incomplete. Check the URL in your email or ask the student to resend the review request.
+              {errorState === "invalid_token" || errorState === "token_invalid"
+                ? "This link is invalid or incomplete. Open the latest review email or ask the student to resend the request."
+                : errorState === "throttled"
+                  ? "This review link has been opened too often. Please try again later."
+                  : "We could not load the review. Check your connection and try again. This does not mean your link is invalid."}
             </p>
           </div>
-        ) : batch.isCompleted ? (
+        ) : errorState === "already_submitted" || batch?.isCompleted ? (
           /* Already Completed State */
           <div className="bg-white rounded-2xl border border-[#E8E7E1] p-8 text-center space-y-3 shadow-xs">
             <div className="size-12 rounded-full bg-emerald-50 text-emerald-700 flex items-center justify-center mx-auto border border-emerald-200">
@@ -159,10 +163,10 @@ export default function SupervisorReviewPage({
             </div>
             <h2 className="text-[15px] font-bold text-[#141414]">Review Already Submitted</h2>
             <p className="text-[12.5px] text-[#5A5954] max-w-md mx-auto leading-relaxed">
-              This logbook submission for <strong className="text-[#141414]">{batch.studentName}</strong> was already reviewed and submitted on {batch.completedAt || "record"}.
+              This logbook review has already been submitted. No further action is needed.
             </p>
           </div>
-        ) : (
+        ) : batch ? (
           /* Valid Active Review Form */
           <form onSubmit={handleSubmit} className="space-y-6">
             
@@ -407,7 +411,7 @@ export default function SupervisorReviewPage({
             </div>
 
           </form>
-        )}
+        ) : null}
 
       </div>
     </div>

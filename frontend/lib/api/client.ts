@@ -210,6 +210,7 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<A
           return {
             ok: false,
             status: retryRes.status,
+            code: retryJson?.code,
             message: retryJson?.message ?? retryJson?.error ?? retryJson?.detail ?? "Something went wrong.",
             errors: isFieldErrors(retryJson) ? retryJson : undefined,
           };
@@ -225,6 +226,7 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<A
       return {
         ok: false,
         status: res.status,
+        code: json?.code,
         message: json?.message ?? json?.error ?? json?.detail ?? "Something went wrong.",
         errors: isFieldErrors(json) ? json : undefined,
       };

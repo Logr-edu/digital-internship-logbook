@@ -380,3 +380,6 @@ Coordinator student list and detail responses include `runningScoreAvg`: the ave
 
 
 Admin overview includes `weeks_submitted_this_week`, counting distinct weekly submission records whose `submitted_at` falls within the current Monday-Sunday week in the application timezone. Reviewed and returned weeks remain counted; pending-review count is a separate metric. The admin dashboard refreshes statistics every 15 seconds and on window focus. The existing rate is labelled overall submission rate because it does not measure timeliness.
+
+
+Supervisor review requests use the `X-Supervisor-Token` header; CORS must allow this header for separate frontend/backend origins. Frontend API errors retain the backend `code` so expired, invalid, used, throttled, and connection failures can be displayed distinctly. Supervisor submission includes `confirm_signature` from the confirmation checkbox.

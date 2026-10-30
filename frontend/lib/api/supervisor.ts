@@ -51,6 +51,7 @@ export interface SupervisorSubmitPayload {
   signature_data?: string;
   token?: string;
   confirmationAgreed?: boolean;
+  confirm_signature?: boolean;
 }
 
 /* ── Supervisor API Client ────────────────────────────────────────── */
@@ -102,6 +103,7 @@ export const supervisorApi = {
       review_text,
       signature_type,
       signed_name,
+      confirm_signature: payload.confirm_signature ?? payload.confirmationAgreed ?? false,
     };
     if (payload.signature_data) {
       body.signature_data = payload.signature_data;

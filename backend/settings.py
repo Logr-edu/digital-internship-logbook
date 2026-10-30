@@ -17,6 +17,7 @@ from urllib.parse import urlsplit
 
 from dotenv import load_dotenv
 import dj_database_url
+from corsheaders.defaults import default_headers
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -98,6 +99,7 @@ APPEND_SLASH = False
 
 CORS_ALLOWED_ORIGINS = sorted(list(frontend_origins))
 CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOW_HEADERS = (*default_headers, "x-supervisor-token")
 CSRF_TRUSTED_ORIGINS = sorted(list(frontend_origins))
 
 REST_FRAMEWORK = {
